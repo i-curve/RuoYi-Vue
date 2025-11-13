@@ -1,5 +1,15 @@
 import request from '@/utils/request'
 
+export function authType() {
+  return request({
+    url: '/loginType',
+    headers: {
+      isToken: false,
+    },
+    method: 'get'
+  })
+}
+
 // 登录方法
 export function login(username, password, code, uuid) {
   const data = {

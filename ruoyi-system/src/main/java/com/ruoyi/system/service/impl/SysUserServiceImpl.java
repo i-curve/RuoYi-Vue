@@ -330,6 +330,11 @@ public class SysUserServiceImpl implements ISysUserService
         return userMapper.updateUserStatus(user.getUserId(), user.getStatus());
     }
 
+    @Override
+    public int updateUserGoogleCode(Long userId, String secret) {
+        return userMapper.updateGoogleCode(userId, secret);
+    }
+
     /**
      * 修改用户基本信息
      * 

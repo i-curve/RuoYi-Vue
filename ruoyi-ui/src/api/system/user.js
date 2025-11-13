@@ -134,3 +134,18 @@ export function deptTreeSelect() {
     method: 'get'
   })
 }
+
+export function generateGoogleSecret(username) {
+  return request({
+    url: `/system/user/generateGoogleSecret?username=${username}`,
+    method: 'get'
+  })
+}
+
+export function bindGoogleCode(data) {
+  return request({
+    url: '/system/user/bindGoogleCode',
+    method: 'post',
+    data: data
+  })
+}

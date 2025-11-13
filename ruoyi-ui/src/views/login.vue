@@ -23,7 +23,7 @@
           <svg-icon slot="prefix" icon-class="password" class="el-input__icon input-icon" />
         </el-input>
       </el-form-item>
-      <el-form-item prop="code" v-if="captchaEnabled">
+      <el-form-item prop="code" v-if="authType == '0'">
         <el-input
           v-model="loginForm.code"
           auto-complete="off"
@@ -36,6 +36,17 @@
         <div class="login-code">
           <img :src="codeUrl" @click="getCode" class="login-code-img"/>
         </div>
+      </el-form-item>
+      <el-form-item prop="code" v-else-if="authType == '1'">
+        <el-input
+          v-model="loginForm.code"
+          type="text"
+          auto-complete="off"
+          placeholder="谷歌验证码"
+          @keyup.enter.native="handleLogin"
+        >
+          <svg-icon slot="prefix" icon-class="validCode" class="el-input__icon input-icon" />
+        </el-input>
       </el-form-item>
       <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 25px 0px;">记住密码</el-checkbox>
       <el-form-item style="width:100%;">
@@ -62,7 +73,7 @@
 </template>
 
 <script>
-import { getCodeImg } from "@/api/login"
+import { getCodeImg, authType } from "@/api/login"
 import Cookies from "js-cookie"
 import { encrypt, decrypt } from '@/utils/jsencrypt'
 import defaultSettings from '@/settings'
@@ -73,6 +84,7 @@ export default {
     return {
       title: process.env.VUE_APP_TITLE,
       footerContent: defaultSettings.footerContent,
+      authType: null,
       codeUrl: "",
       loginForm: {
         username: "admin",
@@ -107,7 +119,12 @@ export default {
     }
   },
   created() {
-    this.getCode()
+    authType().then(response => {
+      this.authType = response?.data
+      if (!this.authType) {
+        this.getCode()
+      }
+    })
     this.getCookie()
   },
   methods: {
@@ -147,7 +164,7 @@ export default {
             this.$router.push({ path: this.redirect || "/" }).catch(()=>{})
           }).catch(() => {
             this.loading = false
-            if (this.captchaEnabled) {
+            if (!this.authType) {
               this.getCode()
             }
           })

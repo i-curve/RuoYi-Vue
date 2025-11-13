@@ -68,6 +68,11 @@
                   <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)"></el-switch>
                 </template>
               </el-table-column>
+              <el-table-column label="谷歌认证" align="center" key="googleCode" v-if="columns.googleCode.visible">
+                <template slot-scope="scope">
+                  <el-button @click="handleBindGoogle(scope.row)">{{ scope.row.googleCode ? '已启用' : "未启用" }}</el-button>
+                </template>
+              </el-table-column>
               <el-table-column label="创建时间" align="center" prop="createTime" v-if="columns.createTime.visible" width="160">
                 <template slot-scope="scope">
                   <span>{{ parseTime(scope.row.createTime) }}</span>
@@ -197,16 +202,33 @@
         <el-button @click="upload.open = false">取 消</el-button>
       </div>
     </el-dialog>
+    <el-dialog :title="bind.title" :visible.sync="bind.open" width="500px" append-to-body>
+      <el-form ref="bind.form" :model="bind.form" :rules="bind.rules" label-width="120px">
+        <div style="text-align: center">请通过谷歌二次认证 app 扫描下面二维码获取 code 进行验证</div>
+        <el-form-item label="谷歌认证码">
+          <img :src="bind.dataimg" style="width: 200px; height: 200px" />
+        </el-form-item>
+        <el-form-item label="谷歌认证码" prop="code">
+          <el-input v-model="bind.form.code" placeholder="请输入认证码" style="width: 300px" />
+        </el-form-item>
+        <div style="margin-left: 70px">如果不能扫码, 请复制下面秘钥: <br/><br/>{{ bind.form.googleSecret }}</div>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitBindGoogleCode">确 定</el-button>
+        <el-button @click="bind.open = false">取 消</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user"
+import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect, generateGoogleSecret, bindGoogleCode } from "@/api/system/user"
 import { getToken } from "@/utils/auth"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
+import { Message } from "element-ui";
 
 export default {
   name: "User",
@@ -267,6 +289,20 @@ export default {
         // 上传的地址
         url: process.env.VUE_APP_BASE_API + "/system/user/importData"
       },
+      bind: {
+        open: false,
+        title: '',
+        dataimg: null,
+        form: {
+          googleSecret: null,
+          code: null
+        },
+        rules: {
+          code: [
+            { required: true, message: "认证码不能为空", trigger: "blur" }
+          ]
+        }
+      },
       // 查询参数
       queryParams: {
         pageNum: 1,
@@ -284,6 +320,7 @@ export default {
         deptName: { label: '部门', visible: true },
         phonenumber: { label: '手机号码', visible: true },
         status: { label: '状态', visible: true },
+        googleCode: { label: '谷歌认证码', visible: true },
         createTime: { label: '创建时间', visible: true }
       },
       // 表单校验
@@ -462,6 +499,18 @@ export default {
         this.form.password = ""
       })
     },
+    handleBindGoogle(row) {
+      generateGoogleSecret(row.userName).then(response => {
+        this.bind.open = true
+        this.bind.title = "绑定谷歌认证码"
+        this.bind.dataimg = response?.data?.dataimg;
+        this.bind.form = {
+          googleSecret: response?.data?.secret,
+          userId: response?.data?.userId,
+          code: null
+        }
+      })
+    },
     /** 重置密码按钮操作 */
     handleResetPwd(row) {
       this.$prompt('请输入"' + row.userName + '"的新密码', "提示", {
@@ -552,6 +601,18 @@ export default {
         return
       }
       this.$refs.upload.submit()
+    },
+    // 绑定谷歌认证码
+    submitBindGoogleCode() {
+      this.$refs["bind.form"].validate(valid => {
+        if (valid) {
+          bindGoogleCode(this.bind.form).then(response => {
+            this.bind.open = false;
+            this.getList()
+            Message({ message: '绑定成功', type: 'success' })
+          })
+        }
+      })
     }
   }
 }

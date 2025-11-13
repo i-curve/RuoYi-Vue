@@ -87,6 +87,15 @@ public interface SysUserMapper
     public int updateUserStatus(@Param("userId") Long userId, @Param("status") String status);
 
     /**
+     * 修改谷歌认证码
+     *
+     * @param userId 用户ID
+     * @param googleCode 秘钥
+     * @return 结果
+     */
+    public int updateGoogleCode(@Param("userId") Long userId, @Param("googleCode") String googleCode);
+
+    /**
      * 更新用户登录信息（IP和登录时间）
      * 
      * @param userId 用户ID
