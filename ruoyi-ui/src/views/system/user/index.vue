@@ -59,6 +59,11 @@
               <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)"></el-switch>
             </template>
           </el-table-column>
+          <el-table-column label="谷歌认证" align="center" key="googleCode" v-if="columns.googleCode.visible">
+            <template slot-scope="scope">
+              <el-button @click="handleBindGoogle(scope.row)">{{ scope.row.googleCode ? '已启用' : "未启用" }}</el-button>
+            </template>
+          </el-table-column>
           <el-table-column label="创建时间" align="center" prop="createTime" v-if="columns.createTime.visible" width="160">
             <template slot-scope="scope">
               <span>{{ parseTime(scope.row.createTime) }}</span>
@@ -166,7 +171,22 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
-
+    <el-dialog :title="google.title" :visible.sync="google.open" width="500px" append-to-body>
+      <el-form ref="google.form" :model="google.form" :rules="google.rules" label-width="120px">
+        <div style="text-align: center">请通过谷歌二次认证 app 扫描下面二维码获取 code 进行验证</div>
+        <el-form-item label="谷歌认证码">
+          <img :src="google.dataimg" style="width: 200px; height: 200px" />
+        </el-form-item>
+        <el-form-item label="谷歌认证码" prop="code">
+          <el-input v-model="google.form.code" placeholder="请输入认证码" style="width: 300px" />
+        </el-form-item>
+        <div style="margin-left: 70px">如果不能扫码, 请复制下面秘钥: <br/><br/>{{ google.form.googleSecret }}</div>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitBindGoogleCode">确 定</el-button>
+        <el-button @click="google.open = false">取 消</el-button>
+      </div>
+    </el-dialog>
     <!-- 用户详情抽屉 -->
     <user-view-drawer ref="userViewRef" />
     <!-- 用户导入对话框 -->
@@ -175,7 +195,7 @@
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user"
+import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect, generateGoogleSecret, bindGoogleCode } from "@/api/system/user"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import TreePanel from "@/components/TreePanel"
@@ -222,6 +242,20 @@ export default {
       roleOptions: [],
       // 表单参数
       form: {},
+      google: {
+        open: false,
+        title: '',
+        dataimg: null,
+        form: {
+          googleSecret: null,
+          code: null
+        },
+        rules: {
+          code: [
+            { required: true, message: "认证码不能为空", trigger: "blur" }
+          ]
+        }
+      },
       // 查询参数
       queryParams: {
         pageNum: 1,
@@ -239,6 +273,7 @@ export default {
         deptName: { label: '部门', visible: true },
         phonenumber: { label: '手机号码', visible: true },
         status: { label: '状态', visible: true },
+        googleCode: { label: '谷歌认证码', visible: true },
         createTime: { label: '创建时间', visible: true }
       },
       // 表单校验
@@ -400,6 +435,30 @@ export default {
         this.form.password = ""
       })
     },
+    handleBindGoogle(row) {
+      generateGoogleSecret(row.userName).then(response => {
+        this.google.open = true
+        this.google.title = "绑定谷歌认证码"
+        this.google.dataimg = response?.data?.dataimg;
+        this.google.form = {
+          googleSecret: response?.data?.secret,
+          userId: response?.data?.userId,
+          code: null
+        }
+      })
+    },
+    // 绑定谷歌认证码
+    submitBindGoogleCode() {
+      this.$refs["google.form"].validate(valid => {
+        if (valid) {
+          bindGoogleCode(this.google.form).then(response => {
+            this.google.open = false;
+            this.getList()
+            Message({ message: '绑定成功', type: 'success' })
+          })
+        }
+      })
+    },
     /** 重置密码按钮操作 */
     handleResetPwd(row) {
       this.$prompt(`请输入「${row.userName}」的新密码`, "重置密码", {
@@ -465,3 +524,4 @@ export default {
   }
 }
 </script>
+
