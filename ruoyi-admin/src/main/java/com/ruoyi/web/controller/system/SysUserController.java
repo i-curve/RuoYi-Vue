@@ -1,21 +1,6 @@
 package com.ruoyi.web.controller.system;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.lang3.ArrayUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -26,11 +11,22 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.googleauth.GoogleAuthUtil;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysPostService;
 import com.ruoyi.system.service.ISysRoleService;
 import com.ruoyi.system.service.ISysUserService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户信息
@@ -52,6 +48,11 @@ public class SysUserController extends BaseController
 
     @Autowired
     private ISysPostService postService;
+
+    @Autowired
+    private GoogleAuthUtil googleAuthUtil;
+    @Autowired
+    private ISysUserService iSysUserService;
 
     /**
      * 获取用户列表
@@ -253,4 +254,31 @@ public class SysUserController extends BaseController
     {
         return success(deptService.selectDeptTreeList(dept));
     }
+
+    // 获取谷歌认证秘钥
+    @GetMapping("generateGoogleSecret")
+    public AjaxResult generateGoogleSecret(String username) {
+        SysUser sysUser = iSysUserService.selectUserByUserName(username);
+        if (sysUser == null) return error("用户不存在");
+        JSONObject result = new JSONObject();
+        result.put("secret", googleAuthUtil.getSecret());
+        String dataimg = googleAuthUtil.getBase64Img(result.getString("secret"), username);
+        result.put("dataimg", dataimg);
+        result.put("userId", sysUser.getUserId());
+        return success(result);
+    }
+
+    // 绑定谷歌认证码
+    @PreAuthorize("@ss.hasPermi('system:user:bind')")
+    @PostMapping("bindGoogleCode")
+    @Log(title = "绑定谷歌码", businessType = BusinessType.GRANT)
+    public AjaxResult bindGoogleCode(@RequestBody BindGoogleCode req) {
+       if (!googleAuthUtil.validCode(req.googleSecret(),Integer.valueOf(req.code())))
+           return error("认证码错误");
+       userService.updateUserGoogleCode(req.userId(), req.googleSecret());
+       return success();
+    }
+}
+
+record BindGoogleCode(Long userId, String googleSecret, String code){
 }

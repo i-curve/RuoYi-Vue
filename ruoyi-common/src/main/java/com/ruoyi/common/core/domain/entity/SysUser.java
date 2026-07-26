@@ -62,6 +62,8 @@ public class SysUser extends BaseEntity
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
+    private String googleCode;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -219,6 +221,10 @@ public class SysUser extends BaseEntity
     {
         this.status = status;
     }
+
+    public String getGoogleCode() { return googleCode; }
+
+    public void setGoogleCode(String googleCode) { this.googleCode = googleCode; }
 
     public String getDelFlag()
     {

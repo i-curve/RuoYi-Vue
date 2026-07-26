@@ -3,6 +3,8 @@ package com.ruoyi.web.controller.system;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import com.ruoyi.common.annotation.Anonymous;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +48,14 @@ public class SysLoginController
 
     @Autowired
     private ISysConfigService configService;
+
+    @Anonymous
+    @GetMapping("/loginType")
+    public AjaxResult loginType() {
+        String type = configService.selectConfigByKey("sys.login.type");
+        if (StringUtils.isEmpty(type)) return AjaxResult.success(0);
+        return AjaxResult.success(Integer.valueOf(type));
+    }
 
     /**
      * 登录方法

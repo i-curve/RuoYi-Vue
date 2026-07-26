@@ -145,6 +145,8 @@ public interface ISysUserService
      */
     public int updateUserStatus(SysUser user);
 
+    public int updateUserGoogleCode(Long userId, String secret);
+
     /**
      * 修改用户基本信息
      * 

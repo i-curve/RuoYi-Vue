@@ -1,5 +1,8 @@
 package com.ruoyi.framework.web.service;
 
+import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.exception.user.*;
+import com.ruoyi.common.utils.googleauth.GoogleAuthUtil;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,11 +16,6 @@ import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
-import com.ruoyi.common.exception.user.BlackListException;
-import com.ruoyi.common.exception.user.CaptchaException;
-import com.ruoyi.common.exception.user.CaptchaExpireException;
-import com.ruoyi.common.exception.user.UserNotExistsException;
-import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.MessageUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -51,6 +49,12 @@ public class SysLoginService
     @Autowired
     private ISysConfigService configService;
 
+    @Autowired
+    private ISysUserService iSysUserService;
+
+    @Autowired
+    private GoogleAuthUtil googleAuthUtil;
+
     /**
      * 登录验证
      * 
@@ -62,8 +66,13 @@ public class SysLoginService
      */
     public String login(String username, String password, String code, String uuid)
     {
+        String type = configService.selectConfigByKey("sys.login.type");
         // 验证码校验
-        validateCaptcha(username, code, uuid);
+        if (!StringUtils.isEmpty(type) && "1".equals(type)) {
+            validateGoogleCode(username, code);
+        } else {
+            validateCaptcha(username, code, uuid);
+        }
         // 登录前置校验
         loginPreCheck(username, password);
         // 用户验证
@@ -97,6 +106,17 @@ public class SysLoginService
         recordLoginInfo(loginUser.getUserId());
         // 生成token
         return tokenService.createToken(loginUser);
+    }
+
+    public void validateGoogleCode(String username, String code) {
+        SysUser sysUser = iSysUserService.selectUserByUserName(username);
+        if (sysUser == null) {
+            throw new GoogleCodeException();
+        }
+        if (StringUtils.isEmpty(sysUser.getGoogleCode())) return;
+        if (!googleAuthUtil.validCode(sysUser.getGoogleCode(), Integer.valueOf(code))) {
+            throw new GoogleCodeException();
+        }
     }
 
     /**
